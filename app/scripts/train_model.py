@@ -162,6 +162,25 @@ def save_models(reg_model, clf_model):
 
     print("Models saved successfully.")
 
+    # Save model version metadata
+    conn = sqlite3.connect(DB_PATH)
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS model_versions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            version TEXT,
+            trained_at TEXT
+        )
+    """)
+
+    conn.execute("""
+        INSERT INTO model_versions (version, trained_at)
+        VALUES (?, datetime('now'))
+    """, ("v8",))  # <-- update version manually when needed
+
+    conn.commit()
+    conn.close()
+
 
 # ==============================
 # MAIN PIPELINE

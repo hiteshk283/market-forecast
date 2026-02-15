@@ -1,4 +1,3 @@
-import os
 import sqlite3
 import pandas as pd
 import numpy as np
@@ -8,20 +7,16 @@ from datetime import datetime
 from ta.trend import EMAIndicator, MACD
 from ta.momentum import RSIIndicator
 from ta.volatility import AverageTrueRange
+from utils.market_calendar import market_is_open
+
 
 # ==============================
-# PATH SETUP
+# CONFIG (ABSOLUTE PATHS FOR K8s)
 # ==============================
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(BASE_DIR, "data")
-MODEL_DIR = os.path.join(BASE_DIR, "models")
-
-os.makedirs(DATA_DIR, exist_ok=True)
-
-DB_PATH = os.path.join(DATA_DIR, "market_data.db")
-PRICE_MODEL_PATH = os.path.join(MODEL_DIR, "price_model.pkl")
-DIRECTION_MODEL_PATH = os.path.join(MODEL_DIR, "direction_model.pkl")
+DB_PATH = "/app/data/market_data.db"
+PRICE_MODEL_PATH = "/app/models/price_model.pkl"
+DIRECTION_MODEL_PATH = "/app/models/direction_model.pkl"
 
 TICKER = "^NSEI"
 INTERVAL = "15m"
@@ -29,7 +24,7 @@ PERIOD = "30d"
 
 
 # ==============================
-# FETCH + UPDATE DATA
+# FETCH DATA
 # ==============================
 
 def fetch_intraday_data():
@@ -43,6 +38,10 @@ def fetch_intraday_data():
 
     return df
 
+
+# ==============================
+# ADD INDICATORS
+# ==============================
 
 def add_indicators(df):
 
@@ -68,6 +67,10 @@ def add_indicators(df):
     return df
 
 
+# ==============================
+# UPDATE DATABASE
+# ==============================
+
 def update_database(df):
     conn = sqlite3.connect(DB_PATH)
     df.to_sql("intraday_data", conn, if_exists="replace", index=False)
@@ -92,35 +95,36 @@ def load_models():
 # STORE PREDICTION
 # ==============================
 
-def store_prediction(result):
+def store_prediction(data):
+
     conn = sqlite3.connect(DB_PATH)
 
     conn.execute("""
         CREATE TABLE IF NOT EXISTS predictions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp TEXT,
             current_price REAL,
             predicted_price REAL,
             expected_return REAL,
             direction TEXT,
-            probability_up REAL,
-            volatility TEXT,
-            confidence REAL,
+            probability REAL,
             trade_action TEXT
         )
     """)
 
     conn.execute("""
-        INSERT INTO predictions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO predictions
+        (timestamp, current_price, predicted_price, expected_return,
+         direction, probability, trade_action)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     """, (
-        result["timestamp"],
-        result["current_price"],
-        result["predicted_price"],
-        result["expected_return_percent"],
-        result["direction"],
-        result["probability_up"],
-        result["volatility"],
-        result["confidence_score"],
-        result["trade_action"]
+        data["timestamp"],
+        data["current_price"],
+        data["predicted_price"],
+        data["expected_return"],
+        data["direction"],
+        data["probability"],
+        data["trade_action"]
     ))
 
     conn.commit()
@@ -133,7 +137,11 @@ def store_prediction(result):
 
 def main():
 
-    print("Updating data...")
+    if not market_is_open():
+        print("Market closed. Skipping execution.")
+        return
+
+    print("Fetching and updating data...")
     df = fetch_intraday_data()
     df = add_indicators(df)
     df = df.dropna()
@@ -142,14 +150,12 @@ def main():
 
     print("Running prediction...")
 
-    # Prepare features
     df["return_1"] = df["Close"].pct_change()
     df["return_3"] = df["Close"].pct_change(3)
     df["return_5"] = df["Close"].pct_change(5)
     df["momentum_5"] = df["Close"] - df["Close"].shift(5)
 
     df = df.dropna()
-
     latest_row = df.iloc[-1]
 
     features = [
@@ -166,28 +172,22 @@ def main():
     predicted_price = float(price_model.predict(X_latest)[0])
     prob_up = float(direction_model.predict_proba(X_latest)[0][1])
 
-    expected_return = float(
-        ((predicted_price - current_price) / current_price) * 100
+    expected_return = ((predicted_price - current_price) / current_price) * 100
+    direction = "UP" if prob_up > 0.5 else "DOWN"
+
+    trade_action = (
+        "BUY" if prob_up > 0.65 else
+        "SELL" if prob_up < 0.35 else
+        "HOLD"
     )
-
-    volatility = "HIGH" if latest_row["Volatility"] > 30 else \
-                 "MEDIUM" if latest_row["Volatility"] > 15 else "LOW"
-
-    trade_action = "BUY" if prob_up > 0.65 and expected_return > 0.15 else \
-                   "SELL" if prob_up < 0.35 and expected_return < -0.15 else \
-                   "HOLD"
-
-    confidence = round(prob_up * 0.7 + 0.3 * 0.53, 2)
 
     result = {
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "current_price": current_price,
         "predicted_price": predicted_price,
-        "expected_return_percent": expected_return,
-        "direction": "UP" if prob_up > 0.5 else "DOWN",
-        "probability_up": prob_up,
-        "volatility": volatility,
-        "confidence_score": confidence,
+        "expected_return": expected_return,
+        "direction": direction,
+        "probability": prob_up,
         "trade_action": trade_action
     }
 

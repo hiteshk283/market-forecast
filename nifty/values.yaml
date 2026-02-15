@@ -26,5 +26,5 @@ persistence:
   storageClass: ""
 
 cron:
-  updateSchedule: "*/15 3-10 * * 1-5"
+  updateSchedule: "*/15 9-15 * * 1-5"
   trainSchedule: "0 20 * * 1-5"

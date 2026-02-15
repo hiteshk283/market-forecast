@@ -9,25 +9,27 @@
     <style>
         body {
             background: #111;
-            color: white;
+            color: #fff;
             font-family: Arial;
             margin: 20px;
         }
 
-        h1 { color: #00d4ff; }
+        h1 {
+            color: #00d4ff;
+        }
 
         button {
-            padding: 8px 15px;
+            padding: 10px 16px;
             background: #00d4ff;
             border: none;
-            border-radius: 5px;
+            border-radius: 6px;
             cursor: pointer;
             font-weight: bold;
         }
 
         canvas {
             margin-top: 20px;
-            background: #1b1b1b;
+            background: #1c1c1c;
             padding: 10px;
             border-radius: 8px;
         }
@@ -39,7 +41,9 @@
             border-radius: 8px;
         }
 
-        .metric { margin: 5px 0; }
+        .metric {
+            margin: 6px 0;
+        }
     </style>
 </head>
 
@@ -54,6 +58,7 @@
     <div class="metric">Win Rate: <span id="win_rate">-</span></div>
     <div class="metric">Avg Return: <span id="avg_return">-</span></div>
     <div class="metric">Max Drawdown: <span id="drawdown">-</span></div>
+    <div class="metric">Sharpe Ratio: <span id="sharpe">-</span></div>
 </div>
 
 <h3>Candlestick Chart + Signals</h3>
@@ -73,6 +78,10 @@ async function loadAll() {
     await loadPerformance();
     await loadRisk();
 }
+
+/* ===========================
+   LOAD CANDLE DATA
+=========================== */
 
 async function loadCandles() {
     const response = await fetch("/historical");
@@ -108,16 +117,16 @@ async function loadCandles() {
                 legend: { labels: { color: 'white' } }
             },
             scales: {
-                x: {
-                    ticks: { color: 'white' }
-                },
-                y: {
-                    ticks: { color: 'white' }
-                }
+                x: { ticks: { color: 'white' } },
+                y: { ticks: { color: 'white' } }
             }
         }
     });
 }
+
+/* ===========================
+   LOAD SIGNALS
+=========================== */
 
 async function loadSignals() {
     const response = await fetch("/signals");
@@ -125,7 +134,6 @@ async function loadSignals() {
 
     if (!candleChart || !signals || signals.length === 0) return;
 
-    // Remove old signal dataset
     candleChart.data.datasets = candleChart.data.datasets.filter(
         ds => ds.label !== "Signals"
     );
@@ -141,21 +149,27 @@ async function loadSignals() {
         data: markers,
         pointRadius: 6,
         pointBackgroundColor: signals.map(s =>
-            s.trade_action === "BUY" ? "green" :
+            s.trade_action === "BUY" ? "lime" :
             s.trade_action === "SELL" ? "red" : "gray")
     });
 
     candleChart.update();
 }
 
+/* ===========================
+   LOAD PERFORMANCE
+=========================== */
+
 async function loadPerformance() {
     const response = await fetch("/performance");
-    const data = await response.json();
+    const result = await response.json();
 
-    if (!data || data.length === 0) return;
+    if (!result || !result.series) return;
 
-    const labels = data.map(d => d.timestamp);
-    const pnl = data.map(d => d.cumulative_pnl);
+    const labels = result.series.map(d => d.timestamp);
+    const pnl = result.series.map(d => d.cumulative_pnl);
+
+    document.getElementById("sharpe").innerText = result.sharpe_ratio;
 
     const ctx = document.getElementById('pnlChart').getContext('2d');
 
@@ -180,16 +194,16 @@ async function loadPerformance() {
                 legend: { labels: { color: 'white' } }
             },
             scales: {
-                x: {
-                    ticks: { color: 'white' }
-                },
-                y: {
-                    ticks: { color: 'white' }
-                }
+                x: { ticks: { color: 'white' } },
+                y: { ticks: { color: 'white' } }
             }
         }
     });
 }
+
+/* ===========================
+   LOAD RISK METRICS
+=========================== */
 
 async function loadRisk() {
     const response = await fetch("/signals");
@@ -219,12 +233,17 @@ async function loadRisk() {
     document.getElementById("drawdown").innerText = drawdown.toFixed(4) + "%";
 }
 
-/* WebSocket Live Update */
+/* ===========================
+   WEBSOCKET LIVE UPDATE
+=========================== */
+
 const ws = new WebSocket("ws://" + location.host + "/ws");
 
 ws.onmessage = async function(event) {
     await loadCandles();
     await loadSignals();
+    await loadPerformance();
+    await loadRisk();
 };
 
 </script>

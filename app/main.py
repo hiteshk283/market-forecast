@@ -119,10 +119,17 @@ def performance():
     if df.empty:
         return {"error": "No signals yet"}
 
-    df["pnl"] = df["expected_return"]  # simplified for demo
+    df["pnl"] = df["expected_return"]
     df["cumulative_pnl"] = df["pnl"].cumsum()
 
-    return df[["timestamp", "cumulative_pnl"]].to_dict(orient="records")
+    sharpe = 0
+    if df["pnl"].std() != 0:
+        sharpe = (df["pnl"].mean() / df["pnl"].std()) * np.sqrt(252)
+
+    return {
+        "series": df[["timestamp", "cumulative_pnl"]].to_dict(orient="records"),
+        "sharpe_ratio": round(sharpe, 3)
+    }
 
 
 @app.websocket("/ws")
