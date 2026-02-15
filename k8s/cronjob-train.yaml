@@ -14,7 +14,7 @@ spec:
             - name: nifty-train
               image: market-forecast:latest
               imagePullPolicy: Never
-              command: ["python", "scripts/train_model.py"]
+              command: ["python", "/app/app/scripts/train_model.py"]
 
               resources:
                 requests:
