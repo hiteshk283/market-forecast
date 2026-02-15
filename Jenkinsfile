@@ -1,54 +1,80 @@
 pipeline {
-  agent {
-    kubernetes {
-      yaml """
+    agent {
+        kubernetes {
+            yaml """
 apiVersion: v1
 kind: Pod
 spec:
+  serviceAccountName: jenkins
   containers:
   - name: docker
-    image: docker:20.10
+    image: docker:24
     command:
     - cat
     tty: true
     volumeMounts:
-    - name: docker-sock
+    - name: dockersock
       mountPath: /var/run/docker.sock
+
+  - name: helm
+    image: alpine/helm:3.12.0
+    command:
+    - cat
+    tty: true
+
   volumes:
-  - name: docker-sock
+  - name: dockersock
     hostPath:
       path: /var/run/docker.sock
 """
-    }
-  }
-
-  stages {
-
-    stage('Checkout') {
-      steps {
-        checkout scm
-      }
-    }
-
-    stage('Build Docker Image') {
-      steps {
-        container('docker') {
-          sh 'docker build -t market-forecast:latest .'
         }
-      }
     }
 
-    stage('Deploy to Kubernetes') {
-      steps {
-        container('docker') {
-          sh 'kubectl apply -f k8s/namespace.yaml'
-          sh 'kubectl apply -f k8s/pvc.yaml'
-          sh 'kubectl apply -f k8s/deployment.yaml'
-          sh 'kubectl apply -f k8s/service.yaml'
-          sh 'kubectl apply -f k8s/cronjob-update.yaml'
-          sh 'kubectl apply -f k8s/cronjob-train.yaml'
-        }
-      }
+    environment {
+        IMAGE_NAME = "localhost:5000/market-forecast"
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+        NAMESPACE = "market-forecast"
     }
-  }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                container('docker') {
+                    sh """
+                    docker build -t $IMAGE_NAME:$IMAGE_TAG .
+                    """
+                }
+            }
+        }
+
+        stage('Push Image') {
+            steps {
+                container('docker') {
+                    sh """
+                    docker push $IMAGE_NAME:$IMAGE_TAG
+                    """
+                }
+            }
+        }
+
+        stage('Deploy with Helm') {
+            steps {
+                container('helm') {
+                    sh """
+                    helm upgrade nifty ./nifty \
+                      --set image.repository=$IMAGE_NAME \
+                      --set image.tag=$IMAGE_TAG \
+                      -n $NAMESPACE
+                    """
+                }
+            }
+        }
+    }
 }

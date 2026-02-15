@@ -2,8 +2,8 @@ namespace: market-forecast
 
 image:
   repository: localhost:5000/market-forecast
-  tag: v5
-  pullPolicy: IfNotPresent
+  tag: latest
+  pullPolicy: Always
 
 service:
   type: NodePort
