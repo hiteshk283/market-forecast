@@ -12,7 +12,7 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: nifty-update
-              image: market-forecast:latest
+              image: market-forecast:v2
               imagePullPolicy: Never
               command: ["python", "app/scripts/update_and_predict.py"]
 
