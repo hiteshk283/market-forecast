@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "nifty"
+        IMAGE_NAME = "market-forecast"
         NAMESPACE = "market-forecast"
     }
 
