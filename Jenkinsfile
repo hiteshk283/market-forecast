@@ -4,29 +4,21 @@ pipeline {
             yaml """
 apiVersion: v1
 kind: Pod
-metadata:
-  labels:
-    app: market-forecast-build
 spec:
   serviceAccountName: jenkins-sa
-
   containers:
+
   - name: kaniko
-    image: gcr.io/kaniko-project/executor:latest
+    image: gcr.io/kaniko-project/executor:debug
+    command:
+    - cat
     tty: true
-    volumeMounts:
-    - name: workspace-volume
-      mountPath: /workspace
 
   - name: helm
     image: alpine/helm:3.12.0
     command:
     - cat
     tty: true
-
-  volumes:
-  - name: workspace-volume
-    emptyDir: {}
 """
         }
     }
@@ -54,7 +46,8 @@ spec:
                       --dockerfile Dockerfile \
                       --destination=$IMAGE_NAME:$IMAGE_TAG \
                       --insecure \
-                      --skip-tls-verify
+                      --skip-tls-verify \
+                      --skip-tls-verify-registry registry:5000
                     """
                 }
             }
@@ -72,15 +65,6 @@ spec:
                     """
                 }
             }
-        }
-    }
-
-    post {
-        success {
-            echo "✅ Deployment Successful!"
-        }
-        failure {
-            echo "❌ Deployment Failed!"
         }
     }
 }
