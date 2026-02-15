@@ -1,0 +1,33 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nifty-train-job
+  namespace: {{ .Values.namespace }}
+spec:
+  schedule: "{{ .Values.cron.trainSchedule }}"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: nifty-train
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              command: ["python", "app/scripts/train_model.py"]
+              resources:
+                limits:
+                  cpu: {{ .Values.resources.limits.cpu }}
+                  memory: {{ .Values.resources.limits.memory }}
+                requests:
+                  cpu: {{ .Values.resources.requests.cpu }}
+                  memory: {{ .Values.resources.requests.memory }}
+              volumeMounts:
+                - name: nifty-storage
+                  mountPath: /app/data
+                - name: nifty-storage
+                  mountPath: /app/models
+          restartPolicy: OnFailure
+          volumes:
+            - name: nifty-storage
+              persistentVolumeClaim:
+                claimName: nifty-pvc

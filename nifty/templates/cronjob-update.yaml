@@ -1,0 +1,26 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nifty-update-job
+  namespace: {{ .Values.namespace }}
+spec:
+  schedule: "{{ .Values.cron.updateSchedule }}"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: nifty-update
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              command: ["python", "app/scripts/update_and_predict.py"]
+              volumeMounts:
+                - name: nifty-storage
+                  mountPath: /app/data
+                - name: nifty-storage
+                  mountPath: /app/models
+          restartPolicy: OnFailure
+          volumes:
+            - name: nifty-storage
+              persistentVolumeClaim:
+                claimName: nifty-pvc

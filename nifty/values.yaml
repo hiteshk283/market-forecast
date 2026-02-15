@@ -1,0 +1,30 @@
+namespace: market-forecast
+
+image:
+  repository: localhost:5000/market-forecast
+  tag: v5
+  pullPolicy: IfNotPresent
+
+service:
+  type: NodePort
+  port: 80
+  targetPort: 8000
+  nodePort: 30007
+
+resources:
+  limits:
+    cpu: "1"
+    memory: "2Gi"
+  requests:
+    cpu: "500m"
+    memory: "1Gi"
+
+persistence:
+  enabled: true
+  size: 5Gi
+  accessMode: ReadWriteOnce
+  storageClass: ""
+
+cron:
+  updateSchedule: "*/15 3-10 * * 1-5"
+  trainSchedule: "0 20 * * 1-5"

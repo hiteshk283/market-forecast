@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nifty
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nifty
+  template:
+    metadata:
+      labels:
+        app: nifty
+    spec:
+      containers:
+        - name: nifty
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8000
+          resources:
+            limits:
+              cpu: {{ .Values.resources.limits.cpu }}
+              memory: {{ .Values.resources.limits.memory }}
+            requests:
+              cpu: {{ .Values.resources.requests.cpu }}
+              memory: {{ .Values.resources.requests.memory }}
+          volumeMounts:
+            - name: nifty-storage
+              mountPath: /app/data
+            - name: nifty-storage
+              mountPath: /app/models
+      volumes:
+        - name: nifty-storage
+          persistentVolumeClaim:
+            claimName: nifty-pvc

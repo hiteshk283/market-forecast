@@ -1,18 +1,48 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Nifty Trading Terminal</title>
+    <title>Nifty ML Trading Terminal</title>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
 
     <style>
-        body { background:#111; color:white; font-family:Arial; margin:20px; }
-        h1 { color:#00d4ff; }
-        canvas { margin-top:20px; }
-        .panel { background:#1e1e1e; padding:15px; margin-top:20px; border-radius:8px; }
-        .metric { margin:5px 0; }
+        body {
+            background: #111;
+            color: white;
+            font-family: Arial;
+            margin: 20px;
+        }
+
+        h1 { color: #00d4ff; }
+
+        button {
+            padding: 8px 15px;
+            background: #00d4ff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        canvas {
+            margin-top: 20px;
+            background: #1b1b1b;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .panel {
+            background: #1e1e1e;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 8px;
+        }
+
+        .metric { margin: 5px 0; }
     </style>
 </head>
+
 <body>
 
 <h1>Nifty ML Trading Terminal</h1>
@@ -34,8 +64,8 @@
 
 <script>
 
-let candleChart;
-let pnlChart;
+let candleChart = null;
+let pnlChart = null;
 
 async function loadAll() {
     await loadCandles();
@@ -48,6 +78,8 @@ async function loadCandles() {
     const response = await fetch("/historical");
     const data = await response.json();
 
+    if (!data || data.length === 0) return;
+
     const candles = data.map(d => ({
         x: new Date(d.Datetime),
         o: d.Open,
@@ -58,7 +90,9 @@ async function loadCandles() {
 
     const ctx = document.getElementById('candleChart').getContext('2d');
 
-    if (candleChart) candleChart.destroy();
+    if (candleChart !== null) {
+        candleChart.destroy();
+    }
 
     candleChart = new Chart(ctx, {
         type: 'candlestick',
@@ -67,6 +101,20 @@ async function loadCandles() {
                 label: 'NIFTY',
                 data: candles
             }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { labels: { color: 'white' } }
+            },
+            scales: {
+                x: {
+                    ticks: { color: 'white' }
+                },
+                y: {
+                    ticks: { color: 'white' }
+                }
+            }
         }
     });
 }
@@ -75,7 +123,12 @@ async function loadSignals() {
     const response = await fetch("/signals");
     const signals = await response.json();
 
-    if (!candleChart) return;
+    if (!candleChart || !signals || signals.length === 0) return;
+
+    // Remove old signal dataset
+    candleChart.data.datasets = candleChart.data.datasets.filter(
+        ds => ds.label !== "Signals"
+    );
 
     const markers = signals.map(s => ({
         x: new Date(s.timestamp),
@@ -99,12 +152,16 @@ async function loadPerformance() {
     const response = await fetch("/performance");
     const data = await response.json();
 
+    if (!data || data.length === 0) return;
+
     const labels = data.map(d => d.timestamp);
     const pnl = data.map(d => d.cumulative_pnl);
 
     const ctx = document.getElementById('pnlChart').getContext('2d');
 
-    if (pnlChart) pnlChart.destroy();
+    if (pnlChart !== null) {
+        pnlChart.destroy();
+    }
 
     pnlChart = new Chart(ctx, {
         type: 'line',
@@ -116,6 +173,20 @@ async function loadPerformance() {
                 borderColor: '#00d4ff',
                 fill: false
             }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { labels: { color: 'white' } }
+            },
+            scales: {
+                x: {
+                    ticks: { color: 'white' }
+                },
+                y: {
+                    ticks: { color: 'white' }
+                }
+            }
         }
     });
 }
@@ -124,12 +195,14 @@ async function loadRisk() {
     const response = await fetch("/signals");
     const data = await response.json();
 
-    if (data.length === 0) return;
+    if (!data || data.length === 0) return;
 
     const wins = data.filter(s => s.expected_return > 0).length;
     const winRate = (wins / data.length * 100).toFixed(2);
 
-    const avgReturn = (data.reduce((a,b)=>a+b.expected_return,0) / data.length).toFixed(4);
+    const avgReturn = (
+        data.reduce((a,b)=>a+b.expected_return,0) / data.length
+    ).toFixed(4);
 
     let peak = 0;
     let drawdown = 0;
@@ -146,10 +219,12 @@ async function loadRisk() {
     document.getElementById("drawdown").innerText = drawdown.toFixed(4) + "%";
 }
 
-// WebSocket auto update
+/* WebSocket Live Update */
 const ws = new WebSocket("ws://" + location.host + "/ws");
-ws.onmessage = function(event) {
-    loadAll();
+
+ws.onmessage = async function(event) {
+    await loadCandles();
+    await loadSignals();
 };
 
 </script>
