@@ -16,7 +16,7 @@ spec:
       containers:
         - name: nifty
           image: market-forecast:latest
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
 
