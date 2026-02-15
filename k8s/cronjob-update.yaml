@@ -14,7 +14,7 @@ spec:
             - name: nifty-update
               image: market-forecast:latest
               imagePullPolicy: Never
-              command: ["python", "/app/app/scripts/update_and_predict.py"]
+              command: ["python", "/app/scripts/update_and_predict.py"]
 
               resources:
                 requests:
