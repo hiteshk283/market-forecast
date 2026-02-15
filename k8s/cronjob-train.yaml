@@ -13,7 +13,7 @@ spec:
           containers:
             - name: nifty-train
               image: market-forecast:v2
-              imagePullPolicy: Never
+              imagePullPolicy: IfNotPresent
               command: ["python", "app/scripts/train_model.py"]
 
               resources:

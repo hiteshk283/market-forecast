@@ -13,7 +13,7 @@ spec:
           containers:
             - name: nifty-update
               image: market-forecast:v2
-              imagePullPolicy: Never
+              imagePullPolicy: IfNotPresent
               command: ["python", "app/scripts/update_and_predict.py"]
 
               resources:
