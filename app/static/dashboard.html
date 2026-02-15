@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Nifty Trading Terminal</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
+
+    <style>
+        body { background:#111; color:white; font-family:Arial; margin:20px; }
+        h1 { color:#00d4ff; }
+        canvas { margin-top:20px; }
+        .panel { background:#1e1e1e; padding:15px; margin-top:20px; border-radius:8px; }
+        .metric { margin:5px 0; }
+    </style>
+</head>
+<body>
+
+<h1>Nifty ML Trading Terminal</h1>
+
+<button onclick="loadAll()">Load Data</button>
+
+<div class="panel">
+    <h3>Risk Metrics</h3>
+    <div class="metric">Win Rate: <span id="win_rate">-</span></div>
+    <div class="metric">Avg Return: <span id="avg_return">-</span></div>
+    <div class="metric">Max Drawdown: <span id="drawdown">-</span></div>
+</div>
+
+<h3>Candlestick Chart + Signals</h3>
+<canvas id="candleChart"></canvas>
+
+<h3>Cumulative PnL</h3>
+<canvas id="pnlChart"></canvas>
+
+<script>
+
+let candleChart;
+let pnlChart;
+
+async function loadAll() {
+    await loadCandles();
+    await loadSignals();
+    await loadPerformance();
+    await loadRisk();
+}
+
+async function loadCandles() {
+    const response = await fetch("/historical");
+    const data = await response.json();
+
+    const candles = data.map(d => ({
+        x: new Date(d.Datetime),
+        o: d.Open,
+        h: d.High,
+        l: d.Low,
+        c: d.Close
+    }));
+
+    const ctx = document.getElementById('candleChart').getContext('2d');
+
+    if (candleChart) candleChart.destroy();
+
+    candleChart = new Chart(ctx, {
+        type: 'candlestick',
+        data: {
+            datasets: [{
+                label: 'NIFTY',
+                data: candles
+            }]
+        }
+    });
+}
+
+async function loadSignals() {
+    const response = await fetch("/signals");
+    const signals = await response.json();
+
+    if (!candleChart) return;
+
+    const markers = signals.map(s => ({
+        x: new Date(s.timestamp),
+        y: s.current_price
+    }));
+
+    candleChart.data.datasets.push({
+        label: 'Signals',
+        type: 'scatter',
+        data: markers,
+        pointRadius: 6,
+        pointBackgroundColor: signals.map(s =>
+            s.trade_action === "BUY" ? "green" :
+            s.trade_action === "SELL" ? "red" : "gray")
+    });
+
+    candleChart.update();
+}
+
+async function loadPerformance() {
+    const response = await fetch("/performance");
+    const data = await response.json();
+
+    const labels = data.map(d => d.timestamp);
+    const pnl = data.map(d => d.cumulative_pnl);
+
+    const ctx = document.getElementById('pnlChart').getContext('2d');
+
+    if (pnlChart) pnlChart.destroy();
+
+    pnlChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Cumulative PnL',
+                data: pnl,
+                borderColor: '#00d4ff',
+                fill: false
+            }]
+        }
+    });
+}
+
+async function loadRisk() {
+    const response = await fetch("/signals");
+    const data = await response.json();
+
+    if (data.length === 0) return;
+
+    const wins = data.filter(s => s.expected_return > 0).length;
+    const winRate = (wins / data.length * 100).toFixed(2);
+
+    const avgReturn = (data.reduce((a,b)=>a+b.expected_return,0) / data.length).toFixed(4);
+
+    let peak = 0;
+    let drawdown = 0;
+    let cumulative = 0;
+
+    data.forEach(s => {
+        cumulative += s.expected_return;
+        peak = Math.max(peak, cumulative);
+        drawdown = Math.min(drawdown, cumulative - peak);
+    });
+
+    document.getElementById("win_rate").innerText = winRate + "%";
+    document.getElementById("avg_return").innerText = avgReturn + "%";
+    document.getElementById("drawdown").innerText = drawdown.toFixed(4) + "%";
+}
+
+// WebSocket auto update
+const ws = new WebSocket("ws://" + location.host + "/ws");
+ws.onmessage = function(event) {
+    loadAll();
+};
+
+</script>
+
+</body>
+</html>

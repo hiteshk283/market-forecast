@@ -1,0 +1,36 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nifty-update-job
+  namespace: market-forecast
+spec:
+  schedule: "*/15 9-15 * * 1-5"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: nifty-update
+              image: market-forecast:latest
+              imagePullPolicy: Never
+              command: ["python", "scripts/update_and_predict.py"]
+
+              resources:
+                requests:
+                  memory: "512Mi"
+                  cpu: "250m"
+                limits:
+                  memory: "1Gi"
+                  cpu: "500m"
+
+              volumeMounts:
+                - name: nifty-storage
+                  mountPath: /app/data
+                - name: nifty-storage
+                  mountPath: /app/models
+
+          volumes:
+            - name: nifty-storage
+              persistentVolumeClaim:
+                claimName: nifty-pvc

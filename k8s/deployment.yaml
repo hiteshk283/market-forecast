@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nifty
+  namespace: market-forecast
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nifty
+  template:
+    metadata:
+      labels:
+        app: nifty
+    spec:
+      containers:
+        - name: nifty
+          image: market-forecast:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8000
+
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "1"
+
+          volumeMounts:
+            - name: nifty-storage
+              mountPath: /app/data
+            - name: nifty-storage
+              mountPath: /app/models
+
+      volumes:
+        - name: nifty-storage
+          persistentVolumeClaim:
+            claimName: nifty-pvc

@@ -1,0 +1,36 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nifty-train-job
+  namespace: market-forecast
+spec:
+  schedule: "0 20 * * 1-5"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: nifty-train
+              image: market-forecast:latest
+              imagePullPolicy: Never
+              command: ["python", "scripts/train_model.py"]
+
+              resources:
+                requests:
+                  memory: "1Gi"
+                  cpu: "500m"
+                limits:
+                  memory: "2Gi"
+                  cpu: "1"
+
+              volumeMounts:
+                - name: nifty-storage
+                  mountPath: /app/data
+                - name: nifty-storage
+                  mountPath: /app/models
+
+          volumes:
+            - name: nifty-storage
+              persistentVolumeClaim:
+                claimName: nifty-pvc
