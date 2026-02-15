@@ -1,3 +1,4 @@
+import os
 import sqlite3
 import pandas as pd
 import numpy as np
@@ -6,15 +7,43 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, accuracy_score
 from xgboost import XGBRegressor, XGBClassifier
 
-DB_NAME = "market_data.db"
 
+# ==============================
+# CONFIGURATION
+# ==============================
+
+DB_PATH = "/app/data/market_data.db"
+MODEL_DIR = "/app/models"
+
+PRICE_MODEL_PATH = os.path.join(MODEL_DIR, "price_model.pkl")
+DIRECTION_MODEL_PATH = os.path.join(MODEL_DIR, "direction_model.pkl")
+
+
+# ==============================
+# LOAD DATA
+# ==============================
 
 def load_data():
-    conn = sqlite3.connect(DB_NAME)
-    df = pd.read_sql("SELECT * FROM intraday_data", conn)
+
+    if not os.path.exists(DB_PATH):
+        raise FileNotFoundError(f"Database not found at {DB_PATH}")
+
+    conn = sqlite3.connect(DB_PATH)
+
+    try:
+        df = pd.read_sql("SELECT * FROM intraday_data", conn)
+    except Exception as e:
+        conn.close()
+        raise Exception("intraday_data table not found. Run data job first.") from e
+
     conn.close()
+
     return df
 
+
+# ==============================
+# FEATURE ENGINEERING
+# ==============================
 
 def add_extra_features(df):
 
@@ -45,6 +74,9 @@ def prepare_data(df):
 
     print(f"Total usable rows: {len(df)}")
 
+    if len(df) == 0:
+        raise Exception("No usable data after feature engineering.")
+
     features = [
         "Close",
         "EMA_9",
@@ -66,6 +98,10 @@ def prepare_data(df):
 
     return X, y_price, y_direction
 
+
+# ==============================
+# TRAIN MODELS
+# ==============================
 
 def train_models(X, y_price, y_direction):
 
@@ -110,31 +146,42 @@ def train_models(X, y_price, y_direction):
     return reg_model, clf_model
 
 
+# ==============================
+# SAVE MODELS
+# ==============================
+
 def save_models(reg_model, clf_model):
 
-    with open("price_model.pkl", "wb") as f:
+    os.makedirs(MODEL_DIR, exist_ok=True)
+
+    with open(PRICE_MODEL_PATH, "wb") as f:
         pickle.dump(reg_model, f)
 
-    with open("direction_model.pkl", "wb") as f:
+    with open(DIRECTION_MODEL_PATH, "wb") as f:
         pickle.dump(clf_model, f)
 
     print("Models saved successfully.")
 
 
+# ==============================
+# MAIN PIPELINE
+# ==============================
+
 def main():
 
+    print("Loading data...")
     df = load_data()
+
+    print("Preparing data...")
     X, y_price, y_direction = prepare_data(df)
 
-    if len(X) == 0:
-        print("ERROR: No data available for training.")
-        return
-
+    print("Training models...")
     reg_model, clf_model = train_models(X, y_price, y_direction)
 
+    print("Saving models...")
     save_models(reg_model, clf_model)
 
-    print("\nTraining completed.")
+    print("\nTraining completed successfully.")
 
 
 if __name__ == "__main__":

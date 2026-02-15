@@ -12,9 +12,9 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: nifty-update
-              image: localhost:5000/market-forecast:v3
+              image: localhost:5000/market-forecast:v4
               imagePullPolicy: IfNotPresent
-              command: ["python", "app/scripts/update_and_predict.py"]
+              command: ["python", "app/scripts/data_engine.py"]
 
               resources:
                 requests:
