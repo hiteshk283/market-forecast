@@ -24,7 +24,7 @@ spec:
     }
 
     environment {
-        IMAGE_NAME = "registry:5000/market-forecast"
+        IMAGE_NAME = "registry.market-forecast.svc.cluster.local:5000/market-forecast"
         IMAGE_TAG = "${env.BUILD_NUMBER}"
         NAMESPACE = "market-forecast"
     }
