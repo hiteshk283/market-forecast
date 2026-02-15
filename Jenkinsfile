@@ -4,19 +4,29 @@ pipeline {
             yaml """
 apiVersion: v1
 kind: Pod
+metadata:
+  labels:
+    app: market-forecast-build
 spec:
   serviceAccountName: jenkins-sa
+
   containers:
   - name: kaniko
     image: gcr.io/kaniko-project/executor:latest
     tty: true
-	
-	
+    volumeMounts:
+    - name: workspace-volume
+      mountPath: /workspace
+
   - name: helm
     image: alpine/helm:3.12.0
     command:
     - cat
     tty: true
+
+  volumes:
+  - name: workspace-volume
+    emptyDir: {}
 """
         }
     }
@@ -35,7 +45,7 @@ spec:
             }
         }
 
-        stage('Build and Push Image (Kaniko)') {
+        stage('Build & Push Image (Kaniko)') {
             steps {
                 container('kaniko') {
                     sh """
@@ -54,13 +64,23 @@ spec:
             steps {
                 container('helm') {
                     sh """
-                    helm upgrade nifty ./nifty \
+                    helm upgrade --install nifty ./nifty \
                       --set image.repository=$IMAGE_NAME \
                       --set image.tag=$IMAGE_TAG \
-                      -n $NAMESPACE
+                      -n $NAMESPACE \
+                      --create-namespace
                     """
                 }
             }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Deployment Successful!"
+        }
+        failure {
+            echo "❌ Deployment Failed!"
         }
     }
 }
