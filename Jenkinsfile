@@ -7,31 +7,22 @@ kind: Pod
 spec:
   serviceAccountName: jenkins-sa
   containers:
-  - name: docker
-    image: localhost:5000/docker:24
+  - name: kaniko
+    image: gcr.io/kaniko-project/executor:latest
     command:
     - cat
     tty: true
-    volumeMounts:
-    - name: dockersock
-      mountPath: /var/run/docker.sock
-
   - name: helm
     image: alpine/helm:3.12.0
     command:
     - cat
     tty: true
-
-  volumes:
-  - name: dockersock
-    hostPath:
-      path: /var/run/docker.sock
 """
         }
     }
 
     environment {
-        IMAGE_NAME = "10.214.238.113:5000/market-forecast"
+        IMAGE_NAME = "registry:5000/market-forecast"
         IMAGE_TAG = "${env.BUILD_NUMBER}"
         NAMESPACE = "market-forecast"
     }
@@ -44,21 +35,16 @@ spec:
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build and Push Image (Kaniko)') {
             steps {
-                container('docker') {
+                container('kaniko') {
                     sh """
-                    docker build -t $IMAGE_NAME:$IMAGE_TAG .
-                    """
-                }
-            }
-        }
-
-        stage('Push Image') {
-            steps {
-                container('docker') {
-                    sh """
-                    docker push $IMAGE_NAME:$IMAGE_TAG
+                    /kaniko/executor \
+                      --context `pwd` \
+                      --dockerfile Dockerfile \
+                      --destination=$IMAGE_NAME:$IMAGE_TAG \
+                      --insecure \
+                      --skip-tls-verify
                     """
                 }
             }
