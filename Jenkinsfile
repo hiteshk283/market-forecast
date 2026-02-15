@@ -8,7 +8,7 @@ spec:
   serviceAccountName: jenkins
   containers:
   - name: docker
-    image: docker:24
+    image: localhost:5000/docker:24
     command:
     - cat
     tty: true
@@ -31,7 +31,7 @@ spec:
     }
 
     environment {
-        IMAGE_NAME = "localhost:5000/market-forecast"
+        IMAGE_NAME = "10.214.238.113:5000/market-forecast"
         IMAGE_TAG = "${env.BUILD_NUMBER}"
         NAMESPACE = "market-forecast"
     }
