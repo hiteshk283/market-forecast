@@ -1,3 +1,4 @@
+yfinance
 fastapi
 uvicorn
 pandas
@@ -6,3 +7,4 @@ xgboost
 scikit-learn
 ta
 sqlalchemy
+joblib
