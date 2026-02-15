@@ -9,9 +9,9 @@ spec:
   containers:
   - name: kaniko
     image: gcr.io/kaniko-project/executor:latest
-    command:
-    - cat
     tty: true
+	
+	
   - name: helm
     image: alpine/helm:3.12.0
     command:
