@@ -13,6 +13,14 @@ spec:
     command:
     - cat
     tty: true
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "3Gi"
+        cpu: "1"
+
 
   - name: helm
     image: alpine/helm:3.12.0
@@ -45,6 +53,7 @@ spec:
                       --context `pwd` \
                       --dockerfile Dockerfile \
                       --destination=$IMAGE_NAME:$IMAGE_TAG \
+					  --snapshot-mode=redo \
                       --insecure \
                       --skip-tls-verify \
                       --skip-tls-verify-registry registry:5000
