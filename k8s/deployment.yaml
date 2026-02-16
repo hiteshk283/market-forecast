@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: nifty
-          image: localhost:5000/market-forecast:v4
+          image: localhost:5000/market-forecast:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
