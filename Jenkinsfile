@@ -6,27 +6,27 @@ apiVersion: v1
 kind: Pod
 spec:
   serviceAccountName: jenkins-sa
-  containers:
 
-  - name: kaniko
-    image: gcr.io/kaniko-project/executor:debug
+  containers:
+  - name: docker
+    image: docker:24
     command:
     - cat
     tty: true
-    resources:
-      requests:
-        memory: "1Gi"
-        cpu: "500m"
-      limits:
-        memory: "3Gi"
-        cpu: "1"
-
+    volumeMounts:
+    - name: dockersock
+      mountPath: /var/run/docker.sock
 
   - name: helm
     image: alpine/helm:3.12.0
     command:
     - cat
     tty: true
+
+  volumes:
+  - name: dockersock
+    hostPath:
+      path: /var/run/docker.sock
 """
         }
     }
@@ -45,18 +45,21 @@ spec:
             }
         }
 
-        stage('Build & Push Image (Kaniko)') {
+        stage('Build Image') {
             steps {
-                container('kaniko') {
+                container('docker') {
                     sh """
-                    /kaniko/executor \
-                      --context `pwd` \
-                      --dockerfile Dockerfile \
-                      --destination=$IMAGE_NAME:$IMAGE_TAG \
-					  --snapshot-mode=redo \
-                      --insecure \
-                      --skip-tls-verify \
-                      --skip-tls-verify-registry registry:5000
+                    docker build -t $IMAGE_NAME:$IMAGE_TAG .
+                    """
+                }
+            }
+        }
+
+        stage('Push Image') {
+            steps {
+                container('docker') {
+                    sh """
+                    docker push $IMAGE_NAME:$IMAGE_TAG
                     """
                 }
             }
@@ -69,6 +72,7 @@ spec:
                     helm upgrade --install nifty ./nifty \
                       --set image.repository=$IMAGE_NAME \
                       --set image.tag=$IMAGE_TAG \
+                      --set image.pullPolicy=Always \
                       -n $NAMESPACE \
                       --create-namespace
                     """
