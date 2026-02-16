@@ -1,7 +1,7 @@
 namespace: market-forecast
 
 image:
-  repository: registry.market-forecast.svc.cluster.local:5000/market-forecast
+  repository: localhost:5000/market-forecast
   tag: latest
   pullPolicy: Always
 
