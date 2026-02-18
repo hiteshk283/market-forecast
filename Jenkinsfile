@@ -65,24 +65,23 @@ pipeline {
                         echo "Updating image to ${FULL_IMAGE}"
         
                         for file in *.yaml; do
-                            sed -i "s|image: ${DOCKER_REPO}:.*|image: ${FULL_IMAGE}|g" \$file
+                            sed -i "s|image:.*forecast:.*|image: ${FULL_IMAGE}|g" \$file
                         done
         
                         git config user.email "jenkins@ci.com"
                         git config user.name "jenkins"
         
                         git add .
-                        git commit -m "Update image to ${IMAGE_TAG}" || echo "No changes"
+                        git commit -m "Update image to ${IMAGE_TAG}" || echo "No changes to commit"
         
-                        # Inject credentials into remote for push
                         git remote set-url origin https://${GIT_USER}:${GIT_PASS}@github.com/hiteshk283/market-forecast.git
-        
                         git push origin HEAD:main
                         """
                     }
                 }
             }
         }
+
 
 
     }
