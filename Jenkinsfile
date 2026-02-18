@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "localhost:5000/market-forecast"
+        DOCKER_IMAGE = "host.docker.internal:5000/market-forecast"
         NAMESPACE = "market-forecast"
-        DEPLOYMENT = "market-forecast"
+        DEPLOYMENT = "nifty"
         TRAIN_CRON = "nifty-train-job"
         UPDATE_CRON = "nifty-update-job"
         IMAGE_TAG = "${BUILD_NUMBER}"
