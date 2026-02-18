@@ -73,6 +73,46 @@ pipeline {
                 """
             }
         }
+		
+		stage('Cleanup Old Registry Images') {
+            steps {
+                script {
+                    sh '''
+                    REPO="market-forecast"
+                    REGISTRY="http://host.docker.internal:5000"
+	        
+                    # Get all tags
+                    TAGS=$(curl -s $REGISTRY/v2/$REPO/tags/list | jq -r '.tags[]' | sort -n)
+	        
+                    # Count tags
+                    COUNT=$(echo "$TAGS" | wc -l)
+	        
+                    if [ "$COUNT" -gt 1 ]; then
+                        # Get latest tag
+                        LATEST=$(echo "$TAGS" | tail -n 1)
+	        
+                        echo "Latest tag: $LATEST"
+	        
+                        # Delete all except latest
+                        for TAG in $TAGS; do
+                            if [ "$TAG" != "$LATEST" ]; then
+                                echo "Deleting tag: $TAG"
+	        
+                                DIGEST=$(curl -sI -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
+                                $REGISTRY/v2/$REPO/manifests/$TAG | \
+                                grep Docker-Content-Digest | awk '{print $2}' | tr -d '\\r')
+	        
+                                curl -X DELETE $REGISTRY/v2/$REPO/manifests/$DIGEST
+                            fi
+                        done
+                    else
+                        echo "Only one image present. No cleanup needed."
+                    fi
+                    '''
+               }
+            }
+        }
+
     }
 
     post {
