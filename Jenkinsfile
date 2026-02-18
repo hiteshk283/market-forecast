@@ -1,72 +1,86 @@
 pipeline {
-  agent {
-    kubernetes {
-      yaml """
-apiVersion: v1
-kind: Pod
-spec:
-  serviceAccountName: jenkins-sa
-  containers:
-  - name: docker
-    image: docker:24
-    command:
-    - cat
-    tty: true
-    volumeMounts:
-    - name: dockersock
-      mountPath: /var/run/docker.sock
+    agent any
 
-  - name: helm
-    image: alpine/helm:3.12.0
-    command:
-    - cat
-    tty: true
-
-  volumes:
-  - name: dockersock
-    hostPath:
-      path: /var/run/docker.sock
-"""
-    }
-  }
-
-  environment {
-    IMAGE = "localhost:5000/market-forecast"
-    TAG = "${env.BUILD_NUMBER}"
-    NAMESPACE = "market-forecast"
-  }
-
-  stages {
-
-    stage('Checkout') {
-      steps {
-        checkout scm
-      }
+    environment {
+        DOCKER_IMAGE = "localhost:5000/market-forecast"
+        NAMESPACE = "market-forecast"
+        DEPLOYMENT = "market-forecast"
+        TRAIN_CRON = "nifty-train-job"
+        UPDATE_CRON = "nifty-update-job"
+        IMAGE_TAG = "${BUILD_NUMBER}"
     }
 
-    stage('Build & Push') {
-      steps {
-        container('docker') {
-          sh """
-            docker build -t $IMAGE:$TAG .
-            docker push $IMAGE:$TAG
-          """
+    stages {
+
+        stage('Checkout Code') {
+            steps {
+                checkout scm
+            }
         }
-      }
+
+        stage('Build Docker Image') {
+            steps {
+                sh """
+                docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} .
+                """
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh """
+                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                    docker push ${DOCKER_IMAGE}:${IMAGE_TAG}
+                    docker logout
+                    """
+                }
+            }
+        }
+
+        stage('Update Kubernetes Deployment') {
+            steps {
+                sh """
+                kubectl set image deployment/${DEPLOYMENT} \
+                ${DEPLOYMENT}=${DOCKER_IMAGE}:${IMAGE_TAG} \
+                -n ${NAMESPACE}
+                """
+            }
+        }
+
+        stage('Update Kubernetes CronJobs') {
+            steps {
+                sh """
+                kubectl set image cronjob/${TRAIN_CRON} \
+                ${TRAIN_CRON}=${DOCKER_IMAGE}:${IMAGE_TAG} \
+                -n ${NAMESPACE}
+
+                kubectl set image cronjob/${UPDATE_CRON} \
+                ${UPDATE_CRON}=${DOCKER_IMAGE}:${IMAGE_TAG} \
+                -n ${NAMESPACE}
+                """
+            }
+        }
+
+        stage('Verify Rollout') {
+            steps {
+                sh """
+                kubectl rollout status deployment/${DEPLOYMENT} -n ${NAMESPACE}
+                """
+            }
+        }
     }
 
-    stage('Deploy') {
-      steps {
-        container('helm') {
-          sh """
-            helm upgrade --install nifty ./nifty \
-              --set image.repository=$IMAGE \
-              --set image.tag=$TAG \
-              --set image.pullPolicy=Always \
-              -n $NAMESPACE --create-namespace
-          """
+    post {
+        success {
+            echo "Deployment successful 🚀 Image tag: ${IMAGE_TAG}"
         }
-      }
+        failure {
+            echo "Build or Deployment Failed ❌"
+        }
     }
-  }
 }
