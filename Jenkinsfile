@@ -49,30 +49,31 @@ pipeline {
         stage('Update K8s Manifests (GitOps)') {
             steps {
                 dir('gitops') {
-                    git branch: "${GIT_BRANCH}",
+                    git branch: "main",
                         credentialsId: 'github-creds',
                         url: 'https://github.com/hiteshk283/market-forecast.git'
-
+        
                     sh """
                     cd k8s
-
+        
                     echo "Updating image to ${FULL_IMAGE}"
-
-                    # Update only our Docker image in all YAML files
+        
                     for file in *.yaml; do
                         sed -i "s|image: ${DOCKER_REPO}:.*|image: ${FULL_IMAGE}|g" \$file
                     done
-
+        
                     git config user.email "jenkins@ci.com"
                     git config user.name "jenkins"
-
+        
                     git add .
-                    git commit -m "Update image to ${IMAGE_TAG}" || echo "No changes to commit"
-                    git push
+                    git commit -m "Update image to ${IMAGE_TAG}" || echo "No changes"
+        
+                    git push origin HEAD:main
                     """
                 }
             }
         }
+
     }
 
     post {
