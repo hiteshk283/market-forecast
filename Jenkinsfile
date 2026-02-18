@@ -48,30 +48,42 @@ pipeline {
 
         stage('Update K8s Manifests (GitOps)') {
             steps {
-                dir('gitops') {
-                    git branch: "main",
-                        credentialsId: 'github-creds',
-                        url: 'https://github.com/hiteshk283/market-forecast.git'
+                withCredentials([usernamePassword(
+                    credentialsId: 'github-creds',
+                    usernameVariable: 'GIT_USER',
+                    passwordVariable: 'GIT_PASS'
+                )]) {
+                    dir('gitops') {
         
-                    sh """
-                    cd k8s
+                        git branch: "main",
+                            credentialsId: 'github-creds',
+                            url: 'https://github.com/hiteshk283/market-forecast.git'
         
-                    echo "Updating image to ${FULL_IMAGE}"
+                        sh """
+                        cd k8s
         
-                    for file in *.yaml; do
-                        sed -i "s|image: ${DOCKER_REPO}:.*|image: ${FULL_IMAGE}|g" \$file
-                    done
+                        echo "Updating image to ${FULL_IMAGE}"
         
-                    git config user.email "jenkins@ci.com"
-                    git config user.name "jenkins"
+                        for file in *.yaml; do
+                            sed -i "s|image: ${DOCKER_REPO}:.*|image: ${FULL_IMAGE}|g" \$file
+                        done
         
-                    git add .
-                    git commit -m "Update image to ${IMAGE_TAG}" || echo "No changes"
+                        git config user.email "jenkins@ci.com"
+                        git config user.name "jenkins"
         
-                    git push origin HEAD:main
-                    """
+                        git add .
+                        git commit -m "Update image to ${IMAGE_TAG}" || echo "No changes"
+        
+                        # Inject credentials into remote for push
+                        git remote set-url origin https://${GIT_USER}:${GIT_PASS}@github.com/hiteshk283/market-forecast.git
+        
+                        git push origin HEAD:main
+                        """
+                    }
                 }
             }
+        }
+
         }
 
     }
