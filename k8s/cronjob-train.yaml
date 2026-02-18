@@ -4,7 +4,7 @@ metadata:
   name: nifty-train-job
   namespace: market-forecast
 spec:
-  schedule: "30 14 * * 1-5"
+  schedule: "0 20 * * 1-5"
   jobTemplate:
     spec:
       template:
