@@ -5,13 +5,12 @@ pipeline {
         DOCKER_REPO = "hiteshk283/forecast"
         IMAGE_TAG   = "${BUILD_NUMBER}"
         FULL_IMAGE  = "${DOCKER_REPO}:${IMAGE_TAG}"
-        GIT_URL     = "https://github.com/hiteshk283/market-forecast.git"
-        K8S_PATH    = "k8s"
+        GIT_BRANCH  = "main"
     }
 
     stages {
 
-        stage('Checkout Source Code') {
+        stage('Checkout Application Code') {
             steps {
                 checkout scm
             }
@@ -47,23 +46,19 @@ pipeline {
             }
         }
 
-        stage('Update Kubernetes Manifests (GitOps)') {
+        stage('Update K8s Manifests (GitOps)') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'github-creds',
-                    usernameVariable: 'GIT_USER',
-                    passwordVariable: 'GIT_PASS'
-                )]) {
+                dir('gitops') {
+                    git branch: "${GIT_BRANCH}",
+                        credentialsId: 'github-creds',
+                        url: 'https://github.com/hiteshk283/market-forecast.git'
+
                     sh """
-                    rm -rf gitops
-
-                    git clone https://${GIT_USER}:${GIT_PASS}@github.com/hiteshk283/market-forecast.git gitops
-
-                    cd gitops/${K8S_PATH}
+                    cd k8s
 
                     echo "Updating image to ${FULL_IMAGE}"
 
-                    # Update only our Docker image across all YAML files
+                    # Update only our Docker image in all YAML files
                     for file in *.yaml; do
                         sed -i "s|image: ${DOCKER_REPO}:.*|image: ${FULL_IMAGE}|g" \$file
                     done
@@ -72,7 +67,7 @@ pipeline {
                     git config user.name "jenkins"
 
                     git add .
-                    git commit -m "Update image to ${IMAGE_TAG}"
+                    git commit -m "Update image to ${IMAGE_TAG}" || echo "No changes to commit"
                     git push
                     """
                 }
@@ -82,8 +77,8 @@ pipeline {
 
     post {
         success {
-            echo "✅ Image built, pushed, and Git updated successfully."
-            echo "🚀 ArgoCD will now auto-sync and deploy."
+            echo "✅ Docker image pushed successfully."
+            echo "🚀 Git updated. ArgoCD will auto-sync."
         }
         failure {
             echo "❌ Pipeline failed."
