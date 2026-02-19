@@ -7,7 +7,8 @@ from datetime import datetime
 from ta.trend import EMAIndicator, MACD
 from ta.momentum import RSIIndicator
 from ta.volatility import AverageTrueRange
-from utils.market_calendar import market_is_open
+from app.utils.market_calendar import market_is_open
+
 
 
 # ==============================
