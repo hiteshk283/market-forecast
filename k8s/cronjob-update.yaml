@@ -12,7 +12,7 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: nifty-update
-              image: hiteshk283/forecast:14
+              image: hiteshk283/forecast:15
               imagePullPolicy: IfNotPresent
               command: ["python", "app/scripts/data_engine.py"]
 
