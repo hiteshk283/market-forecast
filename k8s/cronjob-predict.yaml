@@ -1,19 +1,20 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: nifty-update-job
-  namespace: {{ .Values.namespace }}
+  name: nifty-predict
+  namespace: market-forecast
 spec:
-  schedule: "{{ .Values.cron.updateSchedule }}"
+  schedule: "*/5 * * * *"   # every 5 minutes (change if needed)
   jobTemplate:
     spec:
       template:
         spec:
           containers:
-            - name: nifty-update
-              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-              imagePullPolicy: {{ .Values.image.pullPolicy }}
-              command: ["python", "app/scripts/update_and_predict.py"]
+            - name: nifty-predict
+              image: localhost:5000/market-forecast:latest
+              command:
+                - python
+                - app/scripts/update_and_predict.py
               volumeMounts:
                 - name: nifty-storage
                   mountPath: /app/data
