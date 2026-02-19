@@ -4,24 +4,35 @@ metadata:
   name: nifty-predict
   namespace: market-forecast
 spec:
-  schedule: "*/5 * * * *"
+  schedule: "*/5 * * * *"   # Runs every 5 minutes (adjust if needed)
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 2
   jobTemplate:
     spec:
+      backoffLimit: 2
       template:
         spec:
+          restartPolicy: OnFailure
           containers:
             - name: nifty-predict
-              image: hiteshk283/forecast:16
+              image: localhost:5000/market-forecast:latest
+              imagePullPolicy: IfNotPresent
               command:
                 - python
                 - -m
                 - app.scripts.update_and_predict
+              resources:
+                requests:
+                  cpu: "250m"
+                  memory: "512Mi"
+                limits:
+                  cpu: "500m"
+                  memory: "1Gi"
               volumeMounts:
                 - name: nifty-storage
                   mountPath: /app/data
                 - name: nifty-storage
                   mountPath: /app/models
-          restartPolicy: OnFailure
           volumes:
             - name: nifty-storage
               persistentVolumeClaim:
