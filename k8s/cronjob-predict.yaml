@@ -15,7 +15,7 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: nifty-predict
-              image: localhost:5000/market-forecast:latest
+              image: hiteshk283/forecast:18
               imagePullPolicy: IfNotPresent
               command:
                 - python

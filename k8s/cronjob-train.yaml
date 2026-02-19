@@ -12,7 +12,7 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: nifty-train
-              image: hiteshk283/forecast:16
+              image: hiteshk283/forecast:18
               imagePullPolicy: IfNotPresent
               command: ["python", "app/scripts/train_model.py"]
 
