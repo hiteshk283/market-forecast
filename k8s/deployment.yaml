@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: nifty
-          image: hiteshk283/forecast:18
+          image: hiteshk283/forecast:19
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
