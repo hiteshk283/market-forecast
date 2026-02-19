@@ -6,5 +6,6 @@ numpy
 xgboost
 scikit-learn
 ta
+pytz
 sqlalchemy
 joblib
