@@ -11,7 +11,7 @@ spec:
         spec:
           containers:
             - name: nifty-predict
-              image: hiteshk283/forecast:15
+              image: hiteshk283/forecast:16
               command:
                 - python
                 - -m
