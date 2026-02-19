@@ -11,7 +11,7 @@ spec:
         spec:
           containers:
             - name: nifty-predict
-              image: localhost:5000/market-forecast:latest
+              image: hiteshk283/forecast:15
               command:
                 - python
                 - -m
