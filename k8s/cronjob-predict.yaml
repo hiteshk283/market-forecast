@@ -4,7 +4,7 @@ metadata:
   name: nifty-predict
   namespace: market-forecast
 spec:
-  schedule: "*/5 * * * *"   # every 5 minutes (change if needed)
+  schedule: "*/5 * * * *"
   jobTemplate:
     spec:
       template:
@@ -14,7 +14,8 @@ spec:
               image: localhost:5000/market-forecast:latest
               command:
                 - python
-                - app/scripts/update_and_predict.py
+                - -m
+                - app.scripts.update_and_predict
               volumeMounts:
                 - name: nifty-storage
                   mountPath: /app/data
