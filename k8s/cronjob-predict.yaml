@@ -15,7 +15,7 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: nifty-predict
-              image: hiteshk283/forecast:20
+              image: hiteshk283/forecast:21
               imagePullPolicy: IfNotPresent
               command:
                 - python
