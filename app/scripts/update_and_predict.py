@@ -170,6 +170,24 @@ def store_prediction(data):
 
     conn.commit()
     conn.close()
+    
+ def ensure_predictions_table():
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS predictions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT,
+            current_price REAL,
+            predicted_price REAL,
+            expected_return REAL,
+            direction TEXT,
+            probability REAL,
+            trade_action TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+
 
 
 # ==============================
@@ -179,6 +197,8 @@ def store_prediction(data):
 def main():
 
     try:
+        
+        ensure_predictions_table()
 
         if not market_is_open():
             print("Market closed. Skipping execution.")

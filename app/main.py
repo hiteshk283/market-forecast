@@ -119,7 +119,7 @@ def performance():
     if df.empty:
         return {"error": "No signals yet"}
 
-    df["pnl"] = df["expected_return"]
+    df["pnl"] = df["expected_return_percent"]
     df["cumulative_pnl"] = df["pnl"].cumsum()
 
     sharpe = 0
